@@ -331,6 +331,12 @@ def pose_from_meta(
             meta_pose = dannce_mat(pose_path,dtype=dtype)
         else:
             meta_pose = pose_mat(pose_path, connectivity, dtype=dtype)
+        # print("merged_pose shape:", merged_pose.shape)
+        # print("meta_pose shape:", meta_pose.shape)
+
+        # Ensure meta_pose is 3D
+        if meta_pose.ndim == 4:  # Remove extra dimension if present
+            meta_pose = np.squeeze(meta_pose, axis=1)
 
         merged_pose = np.append(merged_pose, meta_pose, axis=0)
         id = np.append(id, i * np.ones((meta_pose.shape[0])))

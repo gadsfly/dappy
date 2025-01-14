@@ -424,6 +424,38 @@ def _init_vid3D(
     return pose_3d, limits, links_expand, COLOR
 
 
+# def _pose3D_arena(
+#     ax_3d: matplotlib.axes.Axes,
+#     data: np.ndarray,
+#     COLORS: np.ndarray,
+#     links: np.ndarray,
+#     frames: np.ndarray,
+#     limits: np.ndarray,
+#     size: Tuple[int],
+#     title: Optional[str] = None,
+# ):
+#     (rows, cols) = size
+#     kpts_3d = np.reshape(data[frames, :, :], (len(frames) * data.shape[-2], 3))
+
+#     ax_3d = _pose3D_frame(
+#         ax_3d, kpts_3d, COLORS, links, limits  # , figsize=(cols * 5, rows * 5)
+#     )
+#     ax_3d.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+#     ax_3d.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+#     # ax_3d.w_zaxis.set_pane_color((0.75, 0.75, 0.75, 0.75))
+#     ax_3d.w_xaxis.line.set_lw(0.)
+#     ax_3d.w_yaxis.line.set_lw(0.)
+#     ax_3d.w_zaxis.line.set_lw(0.)
+#     ax_3d.grid(False)
+#     ax_3d.set_xticks([])
+#     ax_3d.set_yticks([])
+#     ax_3d.set_zticks([])
+
+#     if title is not None:
+#         ax_3d.set_title(title, fontsize=20, y=0.9)
+
+#     return ax_3d
+
 def _pose3D_arena(
     ax_3d: matplotlib.axes.Axes,
     data: np.ndarray,
@@ -440,12 +472,18 @@ def _pose3D_arena(
     ax_3d = _pose3D_frame(
         ax_3d, kpts_3d, COLORS, links, limits  # , figsize=(cols * 5, rows * 5)
     )
-    ax_3d.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    ax_3d.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
-    # ax_3d.w_zaxis.set_pane_color((0.75, 0.75, 0.75, 0.75))
-    ax_3d.w_xaxis.line.set_lw(0.)
-    ax_3d.w_yaxis.line.set_lw(0.)
-    ax_3d.w_zaxis.line.set_lw(0.)
+
+    # Update pane colors
+    ax_3d.xaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    ax_3d.yaxis.set_pane_color((1.0, 1.0, 1.0, 1.0))
+    ax_3d.zaxis.set_pane_color((0.75, 0.75, 0.75, 0.75))  # Optional: adjust as needed
+
+    # Update line widths
+    ax_3d.xaxis.line.set_linewidth(0.0)
+    ax_3d.yaxis.line.set_linewidth(0.0)
+    ax_3d.zaxis.line.set_linewidth(0.0)
+
+    # Remove grid and ticks
     ax_3d.grid(False)
     ax_3d.set_xticks([])
     ax_3d.set_yticks([])
@@ -455,7 +493,6 @@ def _pose3D_arena(
         ax_3d.set_title(title, fontsize=20, y=0.9)
 
     return ax_3d
-
 
 def arena3D(
     pose: np.ndarray,
@@ -496,6 +533,43 @@ def arena3D(
     return
 
 
+# def _pose3D_grid(
+#     fig: plt.figure,
+#     data: np.ndarray,
+#     connectivity: ds.Connectivity,
+#     frames: np.ndarray,
+#     limits: np.ndarray,
+#     size: Tuple[int],
+#     subtitles: Optional[List[str]] = None,
+# ):
+#     (rows, cols) = size
+#     for i, curr_frame in enumerate(frames):
+#         temp_kpts = data[curr_frame, :, :]
+#         # ax_3d = ax_3d[i//cols, i%cols]
+
+#         ax_3d = fig.add_subplot(rows, cols, i + 1, projection="3d")
+#         ax_3d = _pose3D_frame(
+#             ax_3d,
+#             temp_kpts,
+#             connectivity.colors,
+#             connectivity.links,
+#             limits,
+#             # TODO: adjust marker and line sizes w/figsize
+#             # figsize=(cols * 5, rows * 5),
+#         )
+
+#         ax_3d.grid(False)
+#         ax_3d.axis(False)
+#         for xyz_ax in [ax_3d.xaxis, ax_3d.yaxis, ax_3d.zaxis]:
+#             xyz_ax.set_pane_color((1, 1, 1, 0))
+#             xyz_ax._axinfo["grid"]["color"] = (1, 1, 1, 0)
+
+#         if subtitles is not None:
+#             ax_3d.set_title(str(subtitles[i]), fontsize=20, y=0.9)
+
+#     return fig
+
+
 def _pose3D_grid(
     fig: plt.figure,
     data: np.ndarray,
@@ -507,9 +581,12 @@ def _pose3D_grid(
 ):
     (rows, cols) = size
     for i, curr_frame in enumerate(frames):
+        if curr_frame >= data.shape[0]:
+            print(f"Skipping frame {curr_frame}: exceeds data size {data.shape[0]}")
+            continue
+        
         temp_kpts = data[curr_frame, :, :]
-        # ax_3d = ax_3d[i//cols, i%cols]
-
+        
         ax_3d = fig.add_subplot(rows, cols, i + 1, projection="3d")
         ax_3d = _pose3D_frame(
             ax_3d,
@@ -517,8 +594,6 @@ def _pose3D_grid(
             connectivity.colors,
             connectivity.links,
             limits,
-            # TODO: adjust marker and line sizes w/figsize
-            # figsize=(cols * 5, rows * 5),
         )
 
         ax_3d.grid(False)

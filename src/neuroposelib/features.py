@@ -244,6 +244,34 @@ def get_angular_vel(
     return np.hstack((avel, avel_stds)), avel_labels + std_labels
 
 
+# def get_head_angular(
+#     pose: np.ndarray,
+#     ids: Union[np.ndarray, List],
+#     widths: Union[List[int], np.ndarray] = [5, 10, 50],
+#     link: Union[List[int], np.ndarray] = [0, 3, 4],
+# ):
+#     """
+#     Getting x-y angular velocity of head
+#     IN:
+#         pose: Non-centered, optional rotated pose
+#     """
+#     v1 = pose[:, link[0], :2] - pose[:, link[1], :2]
+#     v2 = pose[:, link[2], :2] - pose[:, link[1], :2]
+
+#     angle = np.arctan2(v1[:, 0], v1[:, 1]) - np.arctan2(v2[:, 0], v2[:, 1])
+#     angle = np.where(angle > 0, angle, angle + 2 * np.pi)
+
+#     angular_vel = np.zeros((len(angle), len(widths)), dtype=pose.dtype)
+#     for i in tqdm(np.unique(ids)):
+#         angle_exp = angle[ids == i]
+#         d_angv = angle_exp - np.append(angle_exp[0], angle_exp[:-1])
+#         for i, width in enumerate(widths):
+#             kernel = np.ones(width) / width
+#             angular_vel[ids == i, i] = convolve(d_angv, kernel, mode="constant")
+
+#     return angular_vel
+
+
 def get_head_angular(
     pose: np.ndarray,
     ids: Union[np.ndarray, List],
@@ -262,14 +290,23 @@ def get_head_angular(
     angle = np.where(angle > 0, angle, angle + 2 * np.pi)
 
     angular_vel = np.zeros((len(angle), len(widths)), dtype=pose.dtype)
-    for _, i in tqdm.tqdm(np.unique(ids)):
-        angle_exp = angle[ids == i]
+
+    # Loop through unique IDs
+    for i_id in tqdm(np.unique(ids)):
+        angle_exp = angle[ids == i_id]
         d_angv = angle_exp - np.append(angle_exp[0], angle_exp[:-1])
-        for i, width in enumerate(widths):
+
+        # Loop through widths for convolution
+        for i_width, width in enumerate(widths):
             kernel = np.ones(width) / width
-            angular_vel[ids == i, i] = convolve(d_angv, kernel, mode="constant")
+            conv_result = convolve(d_angv, kernel, mode="constant")
+
+            # Ensure shape compatibility
+            valid_length = (ids == i_id).sum()
+            angular_vel[ids == i_id, i_width] = conv_result[:valid_length]
 
     return angular_vel
+
 
 
 def wavelet(
@@ -298,6 +335,94 @@ def wavelet(
                 cwt(features[ids == i, j], morlet2, widths, w=w0).T
             )
     return wlet_feats, wlet_labels
+
+
+# def pca(
+#     features: np.ndarray,
+#     labels: List,
+#     categories: List[str] = ["vel", "ego_euc", "ang", "avel"],
+#     n_pcs: int = 10,
+#     downsample: int = 1,
+#     method="fbpca",
+# ):
+#     print("Calculating principal components ... ")
+
+#     # Initializing the PCA method
+#     # if method.startswith("torch"):
+#     #     import torch
+
+#     #     pca_feats = torch.zeros(features.shape[0], len(categories) * n_pcs)
+#     #     features = torch.tensor(features)
+#     # else:
+#     # Centering the features if not torch (pytorch does it itself)
+#     features = features - features.mean(axis=0)
+#     pca_feats = np.zeros(
+#         (features.shape[0], len(categories) * n_pcs), dtype=features.dtype
+#     )
+
+#     if method == "ipca":
+#         from sklearn.decomposition import IncrementalPCA
+
+#         pca = IncrementalPCA(n_components=n_pcs, batch_size=None)
+#     elif method.startswith("fbpca"):
+#         import fbpca
+
+#     num_cols = 0
+#     for i, cat in enumerate(tqdm(categories)):  # Iterate through each feature category
+#         cat += "_"
+#         cols_idx = [
+#             i
+#             for i, col in enumerate(labels)
+#             if (col.startswith(cat) or ("_" + cat in col))
+#         ]
+#         num_cols += len(cols_idx)
+
+#         if method == "ipca" or method == "sklearn_pca":
+#             # import pdb; pdb.set_trace()
+#             pca_feats[:, i * n_pcs : (i + 1) * n_pcs] = pca.fit_transform(
+#                 features[:, cols_idx]
+#             )
+
+#         # elif method.startswith("torch"):
+#         #     feat_cat = features[:, cols_idx]
+#         #     if method.endswith("_gpu"):
+#         #         feat_cat = feat_cat.cuda()
+
+#         #     if "pca" in method:
+#         #         (_, _, V) = torch.pca_lowrank(feat_cat)
+#         #     elif "svd" in method:
+#         #         feat_cat -= feat_cat.mean()
+#         #         (_, _, V) = torch.linalg.svd(feat_cat)
+
+#         #     if method.endswith("_gpu"):
+#         #         pca_feats[:, i * n_pcs : (i + 1) * n_pcs] = (
+#         #             torch.matmul(feat_cat, V[:, :n_pcs]).detach().cpu()
+#         #         )
+#         #         feat_cat.detach().cpu()
+#         #         V.detach().cpu()
+#         #     else:
+#         #         pca_feats[:, i * n_pcs : (i + 1) * n_pcs] = torch.matmul(
+#         #             feat_cat, V[:, :n_pcs]
+#         #         )
+
+#         elif method == "fbpca":
+#             (_, _, V) = fbpca.pca(
+#                 features[::downsample, cols_idx].astype(np.float64), k=n_pcs
+#             )
+#             pca_feats[:, i * n_pcs : (i + 1) * n_pcs] = np.matmul(
+#                 features[:, cols_idx], V.astype(features.dtype).T
+#             )
+
+#     # if method.startswith("torch_pca"):
+#     #     pca_feats = pca_feats.numpy()
+
+#     # assert num_cols == features.shape[1]
+
+#     pc_labels = [
+#         "_".join([cat, "pc" + str(i)]) for cat in categories for i in range(n_pcs)
+#     ]
+
+#     return pca_feats, pc_labels
 
 
 def pca(
@@ -333,12 +458,17 @@ def pca(
     num_cols = 0
     for i, cat in enumerate(tqdm(categories)):  # Iterate through each feature category
         cat += "_"
+    
         cols_idx = [
             i
             for i, col in enumerate(labels)
             if (col.startswith(cat) or ("_" + cat in col))
         ]
         num_cols += len(cols_idx)
+        print(f"Category: {cat}, Matching labels: {[label for label in combined_labels if cat in label]}")
+        if not cols_idx:
+            print(f"Skipping category {cat}: no matching columns found.")
+            continue
 
         if method == "ipca" or method == "sklearn_pca":
             # import pdb; pdb.set_trace()
@@ -369,6 +499,8 @@ def pca(
         #         )
 
         elif method == "fbpca":
+            print(f"Category: {cat}, Columns: {cols_idx}, Feature shape: {features[:, cols_idx].shape}")
+
             (_, _, V) = fbpca.pca(
                 features[::downsample, cols_idx].astype(np.float64), k=n_pcs
             )
