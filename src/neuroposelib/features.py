@@ -465,7 +465,7 @@ def pca(
             if (col.startswith(cat) or ("_" + cat in col))
         ]
         num_cols += len(cols_idx)
-        print(f"Category: {cat}, Matching labels: {[label for label in combined_labels if cat in label]}")
+        # print(f"Category: {cat}, Matching labels: {[label for label in combined_labels if cat in label]}")
         if not cols_idx:
             print(f"Skipping category {cat}: no matching columns found.")
             continue
@@ -499,7 +499,7 @@ def pca(
         #         )
 
         elif method == "fbpca":
-            print(f"Category: {cat}, Columns: {cols_idx}, Feature shape: {features[:, cols_idx].shape}")
+            # print(f"Category: {cat}, Columns: {cols_idx}, Feature shape: {features[:, cols_idx].shape}")
 
             (_, _, V) = fbpca.pca(
                 features[::downsample, cols_idx].astype(np.float64), k=n_pcs
